@@ -1,0 +1,14 @@
+{
+  "monitoring_started": "🚨 ¡Sistema de monitoreo iniciado!",
+  "monitoring_stopped": "Sistema de monitoreo detenido",
+  "error_monitoring": "❌ Error en el monitoreo: {e}",
+  "error_temp_check": "❌ Error al verificar la temperatura: {e}",
+  "error_cpu_check": "❌ Error al verificar el CPU: {e}",
+  "error_ram_check": "❌ Error al verificar la RAM: {e}",
+  "error_send_alert": "❌ Error al enviar la alerta: {e}",
+  "alert_sent_log": "📢 Alerta enviada: {text}",
+  "alert_overheat": "🔥 <b>¡SOBRECALENTAMIENTO!</b> Temperatura del CPU: {value}°C (Límite: {threshold}°C)",
+  "alert_cpu_high": "⚡ <b>¡ALTA CARGA!</b> CPU: {value}% (Límite: {threshold}%)",
+  "alert_ram_high": "💾 <b>¡MUCHA MEMORIA!</b> RAM: {value}% (Límite: {threshold}%)",
+  "log_temp_ok": "✅ Temperatura normal: {value}°C"
+}

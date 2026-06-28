@@ -1,0 +1,14 @@
+{
+  "monitoring_started": "🚨 Система мониторинга запущена!",
+  "monitoring_stopped": "Система мониторинга остановлена",
+  "error_monitoring": "❌ Ошибка в мониторинге: {e}",
+  "error_temp_check": "❌ Ошибка проверки температуры: {e}",
+  "error_cpu_check": "❌ Ошибка проверки CPU: {e}",
+  "error_ram_check": "❌ Ошибка проверки RAM: {e}",
+  "error_send_alert": "❌ Ошибка отправки алерта: {e}",
+  "alert_sent_log": "📢 Отправлен алерт: {text}",
+  "alert_overheat": "🔥 <b>ПЕРЕГРЕВ!</b> Температура CPU: {value}°C (порог: {threshold}°C)",
+  "alert_cpu_high": "⚡ <b>ВЫСОКАЯ НАГРУЗКА!</b> CPU: {value}% (порог: {threshold}%)",
+  "alert_ram_high": "💾 <b>МНОГО ПАМЯТИ!</b> RAM: {value}% (порог: {threshold}%)",
+  "log_temp_ok": "✅ Температура в норме: {value}°C"
+}

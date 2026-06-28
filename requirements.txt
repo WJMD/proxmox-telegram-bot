@@ -1,5 +1,5 @@
-python-telegram-bot==22.5
+python-telegram-bot==22.8
 python-dotenv==1.0.1
-proxmoxer==2.2.0
-psutil==7.1.0
+proxmoxer==2.3.0
+psutil==7.2.2
 nest_asyncio==1.6.0

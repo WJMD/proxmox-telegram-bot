@@ -35,7 +35,7 @@ def get_vm_list():
                     total_gb = _human_gb(status.get("maxdisk", 0))
 
                     if total_gb == 0:
-                        config = proxmox.nodes(node_name).qemu(vmid).config.get()
+                        config = proxmox.nodes(node_name).qemu(vmid).config()
                         for val in config.values():
                             if isinstance(val, str):
                                 m = re.search(r"size=(\d+)([GM]?)B?", val, re.I)
