@@ -1,95 +1,110 @@
 **🤖 Proxmox VE Telegram Bot**
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://python.org)
-[![python-telegram-bot](https://img.shields.io/badge/telegram--bot-v22.5-2CA5E0.svg?logo=telegram)](https://python-telegram-bot.org)
+[![python-telegram-bot](https://img.shields.io/badge/telegram--bot-v22.8-2CA5E0.svg?logo=telegram)](https://python-telegram-bot.org)
 [![Proxmox VE](https://img.shields.io/badge/Proxmox-8.x%2B-EC6601.svg?logo=proxmox)](https://proxmox.com)
 [![License MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-1.3-blue.svg)](https://github.com/sliva/proxmox-telegram-bot)
+[![Version](https://img.shields.io/badge/Version-2.0-blue.svg)](https://github.com/wandel-dr/proxmox-telegram-bot)
 
-> **Самый продвинутый и безопасный Telegram-бот для управления Proxmox VE в 2025 году**
-> Всё, что нужно системному администратору: мониторинг, алерты, управление VM/LXC и безопасный шелл — прямо в чате.
-
-_Это мой первый публичный репозиторий, поэтому не ругайте строго ✨_
+> **The most advanced and secure Telegram bot for Proxmox VE management in 2026**
+> Everything a system administrator needs: monitoring, alerts, VM/LXC management, and a secure shell—directly in your chat.
 
 ---
 
-## ✨ Возможности
+## 👥 Credits & Attribution
 
-| Категория           | Функционал                      | Описание                                                |
-| ------------------- | ------------------------------- | ------------------------------------------------------- |
-| **📊 Мониторинг**   | Статус хоста (`/status`)        | Аптайм, нагрузка CPU, RAM, диски, температуры           |
-|                     | Списки VM/LXC (`/vm`, `/lxc`)   | Кнопочное управление, метрики реального времени         |
-| **⚡ Управление**   | Управление VM/LXC               | Start / Stop / Reboot с подтверждением                  |
-|                     | Поддержка кластера              | Автоматический поиск ноды по VMID                       |
-| **🔧 Утилиты**      | Безопасная консоль (`/console`) | Таймаут 30с, чёрный список команд, обрезка вывода       |
-|                     | Автоматические алерты           | Мониторинг перегрева, нагрузки CPU/RAM                  |
-| **🔐 Безопасность** | Whitelist-доступ                | Только указанные Telegram ID                            |
-|                     | Уведомления о попытках доступа  | Админы получают оповещения о неавторизованных действиях |
+This project is an updated and enhanced fork of the original work developed by **Sliva**. 
+* **Original Creator:** Sliva 
+* **Original Repository:** [sliva-dev/proxmox-telegram-bot](https://github.com/sliva-dev/proxmox-telegram-bot)
+
+### 🚀 Improvements in this Fork:
+* **Full Internationalization (i18n):** Implemented a dynamic language architecture using separate JSON dictionaries (`language/` directory) supporting English, Spanish, and Russian.
+* **Codebase Refactoring:** Standardized all internal variables, system logs, comments, and exceptions to professional English following clean code best practices.
+* **Infrastructure Upgrades:** Updated critical core dependencies (`python-telegram-bot v22.8`, `proxmoxer v2.3.0`, and `psutil v7.2.2`) to ensure full stability with 2026 systems and modern Proxmox VE APIs.
 
 ---
 
-## 🚀 Быстрый старт
+## ✨ Features
 
-### Установка
+| Category | Functionality | Description |
+| :--- | :--- | :--- |
+| **📊 Monitoring** | Host Status (`/status`) | Uptime, CPU load, RAM usage, storage, and temperatures |
+| | VM/LXC Lists (`/vm`, `/lxc`) | Button-based management, real-time metrics |
+| **⚡ Management** | VM/LXC Control | Start / Stop / Reboot with confirmation prompts |
+| | Cluster Support | Automatic node lookup by VMID |
+| **🔧 Utilities** | Secure Console (`/console`) | 30s timeout, command blacklist, output truncation |
+| | Automatic Alerts | Overheating, high CPU, and high RAM usage monitoring |
+| **🔐 Security** | Whitelist Access | Only authorized Telegram IDs allowed |
+| | Access Attempt Alerts | Administrators receive instant notifications of unauthorized actions |
+
+---
+
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
 cd /opt
-git clone https://github.com/sliva/proxmox-telegram-bot.git
+git clone [https://github.com/wandel-dr/proxmox-telegram-bot.git](https://github.com/wandel-dr/proxmox-telegram-bot.git)
 cd proxmox-telegram-bot
 
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
 ```
 
-Конфигурация
+### Configuration
 
-Создайте файл `.env`:
+Create a `.env` file in the root directory:
 
 ```env
 # Telegram
 BOT_TOKEN=your_bot_token_from_BotFather
 WHITELIST=your_telegram_id
 
-# Proxmox (рекомендуется API Token!)
+# Proxmox (API Token is highly recommended!)
 HOST=your_proxmox_ip
 PROXMOX_TOKEN_NAME=telegram-bot@pve!
 PROXMOX_TOKEN_VALUE=your_token_value
 PROXMOX_PORT=8006
 
-# Настройки алертов
+# Alert & Application Settings
+LANGUAGE=es
 CPU_TEMP_THRESHOLD=80
 CPU_USAGE_THRESHOLD=70
 RAM_USAGE_THRESHOLD=70
 CHECK_INTERVAL=30
+
 ```
 
-> 💡 Как создать токен в Proxmox: > `Datacenter → Permissions → API Tokens → Add`
-> Права: `/`
+> 💡 **How to create an API token in Proxmox VE:** > Go to `Datacenter → Permissions → API Tokens → Add`.
+> Required Permissions: `/`
 
-Запуск
+### Execution
 
 ```bash
 python main.py
+
 ```
 
 ---
 
-## 🎯 Команды бота
+## 🎯 Bot Commands
 
-| Команда          | Описание                               |
-| ---------------- | -------------------------------------- |
-| `/start`         | Приветствие и список команд            |
-| `/status`        | Полная сводка по хосту                 |
-| `/vm`            | Список всех виртуальных машин          |
-| `/lxc`           | Список всех LXC-контейнеров            |
-| `/console <cmd>` | Выполнить команду (`ls`, `mkdir`, etc) |
+| Command | Description |
+| --- | --- |
+| `/start` | Welcome message and command list |
+| `/status` | Complete host summary status |
+| `/vm` | List of all Virtual Machines |
+| `/lxc` | List of all LXC Containers |
+| `/console <cmd>` | Execute a terminal command (`ls`, `mkdir`, etc.) |
 
 ---
 
-## 🔧 Автозапуск через systemd
+## 🔧 Autostart via systemd
 
-Создайте файл `/etc/systemd/system/proxmox-bot.service`:
+Create the service file `/etc/systemd/system/proxmox-bot.service`:
 
 ```ini
 [Unit]
@@ -108,111 +123,109 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
+
 ```
 
-Активируйте сервис:
+Enable and start the background service:
 
 ```bash
 systemctl daemon-reload
 systemctl enable --now proxmox-bot.service
+
 ```
 
 ---
 
-## 🛡️ Безопасность
+## 🛡️ Security
 
-### Многоуровневая защита:
+### Multi-level Protection:
 
-- ✅ **Whitelist-авторизация** — только разрешённые Telegram ID
-- ✅ **Уведомления о попытках взлома** — мгновенные оповещения админам
-- ✅ **Защищённая консоль** — жёсткий чёрный список команд:
-  - `rm -rf /`, `mkfs`, `fdisk`, `dd of=/dev/`, `wipefs`
-  - `shutdown`, `reboot`, `halt`, `poweroff`
-  - Форк-бомбы и опасные конструкции
-- ✅ **Таймауты выполнения** — максимум 30 секунд на команду
-- ✅ **Обрезка вывода** — ограничение 4000 символов
+* ✅ **Whitelist Authorization** — Only explicitly authorized Telegram IDs can interact with the bot.
+* ✅ **Intrusion Attempt Alerts** — Instant administrative notifications when unauthorized users attempt actions.
+* ✅ **Secured Console** — Strict shell command blacklist protecting your infrastructure against:
+* `rm -rf /`, `mkfs`, `fdisk`, `dd of=/dev/`, `wipefs`
+* `shutdown`, `reboot`, `halt`, `poweroff`
+* Fork bombs and dangerous logical syntax constructions.
+
+
+* ✅ **Execution Timeouts** — Enforced 30-second maximum timeout per console command to prevent terminal hangs.
+* ✅ **Output Truncation** — Smart truncation at 4000 characters to strictly respect Telegram's message payload limits.
 
 ---
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
-```
+```text
 proxmox-telegram-bot/
-├── main.py                               # Запуск бота
-├── config.py                             # Загрузка конфигурации из .env
-├── requirements.txt                      # Зависимости проекта
-├── .env                                  # Конфигурация (не в репозитории)
-├── README.md                             # Документация проекта
+├── main.py                               # Bot startup script
+├── config.py                             # Configuration loader from .env
+├── requirements.txt                      # Project dependencies
+├── .env                                  # Environment variables (git-ignored)
+├── README.md                             # Project documentation
 │
-├── core/                                 # Ядро бота
+├── core/                                 # Core bot modules
 │   ├── __init__.py
-│   ├── auth.py                          # Whitelist + уведомления безопасности
-│   └── logger.py                         # Настройки логирования
+│   ├── auth.py                           # Whitelist validation + security alerts
+│   └── logger.py                         # Logging configurations
 │
-├── handlers/                              # Обработчики команд бота
+├── handlers/                             # Bot command handlers
 │   ├── __init__.py
-│   ├── common.py                         # Общие команды (/start, /help, /status)
-│   ├── console.py                         # Консоль сервера
-│   ├── resources.py                        # Единый обработчик ресурсов
-│   └── routers.py                          # Маршрутизация команд
+│   ├── common.py                         # General commands (/start, /help, /status)
+│   ├── console.py                        # Server console emulator
+│   ├── resources.py                      # Unified resource handler
+│   └── routers.py                        # Command routing logic
 │
-├── proxmox/                               # Взаимодействие с Proxmox API
+├── language/                             # Localization dictionaries (JSON)
+│   ├── en.json
+│   ├── es.json
+│   └── ru.json
+│
+├── proxmox/                              # Proxmox API integration
 │   ├── __init__.py
-│   ├── client.py                          # API клиент
-│   ├── vms.py                              # Работа с виртуальными машинами
-│   ├── lxcs.py                             # Работа с контейнерами LXC
-│   └── utils.py                            # Утилиты для работы с Proxmox
+│   ├── client.py                         # API client instance
+│   ├── vms.py                            # Virtual Machine operations
+│   ├── lxcs.py                           # LXC Container operations
+│   └── utils.py                          # Proxmox helper utilities
 │
-├── services/                               # Дополнительные сервисы
+├── services/                             # Additional internal services
 │   ├── __init__.py
-│   └── alerts.py                           # Система мониторинга и алертов
+│   └── alerts.py                         # Monitoring loop and alert system
 │
-└── system/                                 # Системные утилиты
+└── system/                               # System level utilities
     ├── __init__.py
-    ├── checks.py                           # Проверки системы (диск, память, нагрузка)
-    └── sensors.py                           # Мониторинг температуры и датчиков
+    ├── checks.py                         # System metrics (disk, RAM, system load)
+    └── sensors.py                        # Thermal monitoring and hardware sensors
+
 ```
 
 ---
 
-## 📸 Демонстрация
+## 📸 Demo
 
-<div align="center">
-
-### 🖥️ Интерфейс бота в действии
-
-<div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-
-<img src="https://i.imgur.com/ku2SgWv.png" width="280" style="border: 1px solid #ddd; border-radius: 8px; padding: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1)" alt="Главное меню" />
-
-<img src="https://i.imgur.com/zPDWyjF.png" width="280" style="border: 1px solid #ddd; border-radius: 8px; padding: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1)" alt="Выбор режима" />
-
-<img src="https://i.imgur.com/Bq4Abvw.png" width="280" style="border: 1px solid #ddd; border-radius: 8px; padding: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1)" alt="Процесс работы" />
-
-</div>
-</div>
+### 🖥️ Bot Interface in Action
 
 ---
 
-## 📄 Лицензия
+## 📄 License
 
-**MIT License** — полная свобода использования с ответственностью.
+**MIT License** — Full usage freedom with liability disclaimer.
 
-```
+```text
 MIT License © 2025-2026 Sliva
+
 ```
 
 ---
 
-<div align="center">
+### ⭐ If you found this project useful, give it a star!
 
-### ⭐ Если проект понравился — поставьте звезду!
+### 🐛 Found a bug? — Open an Issue
 
-### 🐛 Нашли баг? — Создайте Issue
+### 💡 Want to help? — Pull Requests are welcome!
 
-### 💡 Хотите помочь? — Pull Request приветствуется!
+**Original Author:** [Sliva]((https://www.google.com/search?q=https://github.com/sliva-dev))
 
-**Автор:** Sliva
-**Версия:** 2.0 (февраль 2026)
+**Maintained and Enhanced by:** [Wander J.](https://www.google.com/search?q=https://github.com/WJMD)
 
-</div>
+**Version:** 2.1 (June 2026)
+
