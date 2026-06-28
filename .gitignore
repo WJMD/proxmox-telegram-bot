@@ -174,3 +174,10 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+#ignorar los test
+test_auth.py
+test_check.py
+test_client.py
+test_proxmox_connection.py
+test_sensors.py
+test_token_request.py
