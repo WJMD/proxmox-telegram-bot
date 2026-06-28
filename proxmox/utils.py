@@ -47,28 +47,16 @@ def find_node_by_vmid(proxmox, vmid: int, resource_type: str = "qemu"):
 
 # --- Nuevas funciones de parseo ---
 
-def parse_lxc_status(status: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Extracts metrics from an LXC container status.
-    Returns a dict with: uptime, cpu_usage_percent, mem_used_mb, mem_total_mb,
-    mem_usage_percent, disk_used_gb, disk_total_gb.
-    """
+def parse_lxc_status(status: dict) -> dict:
     uptime = int(status.get("uptime", 0))
     cpu = round(float(status.get("cpu", 0)) * 100, 1)
     mem_used = int(status.get("mem", 0)) // 1024 // 1024
     mem_total = int(status.get("maxmem", 1)) // 1024 // 1024
     mem_pct = round(mem_used / mem_total * 100, 1) if mem_total else 0
 
-    used_gb = total_gb = 0.0
-    if "rootfs" in status:
-        used_gb += _human_gb(status["rootfs"].get("used", 0))
-        total_gb += _human_gb(status["rootfs"].get("total", 0)) or _human_gb(status["rootfs"].get("max", 0))
-
-    for key, val in status.items():
-        if key.startswith("mp") or key.startswith("mountpoint"):
-            if isinstance(val, dict):
-                used_gb += _human_gb(val.get("used", 0))
-                total_gb += _human_gb(val.get("total", 0)) or _human_gb(val.get("max", 0))
+    # ✅ Use the correct fields for the disk
+    disk_used_gb = _human_gb(status.get("disk", 0))
+    disk_total_gb = _human_gb(status.get("maxdisk", 0))
 
     return {
         "uptime": uptime,
@@ -76,8 +64,8 @@ def parse_lxc_status(status: Dict[str, Any]) -> Dict[str, Any]:
         "mem_used_mb": mem_used,
         "mem_total_mb": mem_total,
         "mem_usage_percent": mem_pct,
-        "disk_used_gb": round(used_gb, 1),
-        "disk_total_gb": round(total_gb, 1) if total_gb > 0 else 0.0,
+        "disk_used_gb": disk_used_gb,
+        "disk_total_gb": disk_total_gb,
     }
 
 def parse_vm_status(status: Dict[str, Any], config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
