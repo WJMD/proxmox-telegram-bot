@@ -13,7 +13,7 @@ print(f"Host: {host}")
 print(f"Token Name: {token_name}")
 print(f"Token Value: {token_value[:5]}...")
 
-# --- Método 1: token_name + token_value (backend explícito) ---
+# --- Método 1: token_name + token_value (backend explícito)... ---
 try:
     print("\n🔹 Probando método 1: token_name + token_value (backend='https')")
     proxmox = ProxmoxAPI(
