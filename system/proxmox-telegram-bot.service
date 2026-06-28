@@ -1,0 +1,20 @@
+[Unit]
+Description=Proxmox Telegram Bot
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/proxmox-telegram-bot
+Environment="PATH=/opt/proxmox-telegram-bot/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="LANG=en_US.UTF-8"
+ExecStart=/opt/proxmox-telegram-bot/venv/bin/python /opt/proxmox-telegram-bot/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=proxmox-bot
+
+[Install]
+WantedBy=multi-user.target

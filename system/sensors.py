@@ -117,7 +117,7 @@ def get_status() -> str:
 
         # ---------- Build output using translations ----------
         lines = []
-        lines.append(f"<b>{_t.get('status_title', '📊 Host Status:')}</b>")
+        # lines.append(f"<b>{_t.get('status_title', '📊 Host Status:')}</b>")
 
         # Uptime
         lines.append(f"{_t.get('status_uptime', '⏰ Uptime:')} {uptime_str}")
@@ -126,9 +126,9 @@ def get_status() -> str:
         cpu1, cpu5, cpu15 = psutil.getloadavg() if hasattr(psutil, "getloadavg") else (0, 0, 0)
         lines.append(
             _t.get('status_cpu', '⚡ CPU Load: 1m: {cpu1} ({pct1}%), 5m: {cpu5} ({pct5}%), 15m: {cpu15} ({pct15}%)')
-            .format(cpu1=f"{cpu1:.2f}", pct1=f"{cpu_pct:.1f}",
-                    cpu5=f"{cpu5:.2f}", pct5=f"{cpu_pct:.1f}",
-                    cpu15=f"{cpu15:.2f}", pct15=f"{cpu_pct:.1f}")
+            .format(cpu1=f"{cpu1:.2f} ", pct1=f" - {cpu_pct:.1f}",
+                    cpu5=f"{cpu5:.2f} ", pct5=f" : {cpu_pct:.1f}",
+                    cpu15=f"{cpu15:.2f} ", pct15=f" : {cpu_pct:.1f}")
         )
 
         # RAM

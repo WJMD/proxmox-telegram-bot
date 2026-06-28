@@ -2,6 +2,7 @@ import logging
 import time
 import subprocess
 from typing import Dict, Any
+from typing import Optional
 
 from proxmox.client import get_proxmox_api, retry_proxmox_call
 from proxmox.utils import find_node_by_vmid, parse_lxc_status
@@ -23,7 +24,8 @@ def get_lxc_list() -> list:
             for ct in proxmox.nodes(node_name).lxc.get():
                 vmid = int(ct["vmid"])
                 try:
-                    status = proxmox.nodes(node_name).lxc(vmid).status.current.get()
+                    # ✅ CORRECCIÓN: usar .current() en lugar de .current.get()
+                    status = proxmox.nodes(node_name).lxc(vmid).status.current()
                     metrics = parse_lxc_status(status)
                     lxcs.append({
                         "id": vmid,
@@ -39,7 +41,7 @@ def get_lxc_list() -> list:
     return lxcs
 
 
-def lxc_action(vmid: int, action: str, node: str = None) -> str:
+def lxc_action(vmid: int, action: str, node: Optional[str] = None) -> str:
     proxmox = get_proxmox_api(PROXMOX)
 
     if node is None:
@@ -50,31 +52,32 @@ def lxc_action(vmid: int, action: str, node: str = None) -> str:
 
     try:
         if action == "start":
-            proxmox.nodes(node).lxc(vmid).status.start.post()
+            proxmox.nodes(node).lxc(vmid).status.start.post() # type: ignore
             return _t.get("lxc_started", "Started")
 
         elif action == "stop":
             try:
-                proxmox.nodes(node).lxc(vmid).status.shutdown.post(timeout=20)
+                proxmox.nodes(node).lxc(vmid).status.shutdown.post(timeout=20) # type: ignore
                 return _t.get("lxc_stopping", "Stopping...")
             except Exception as e:
                 logger.warning(f"Graceful shutdown for LXC {vmid} failed ({e}). Enforcing hard stop.")
-                proxmox.nodes(node).lxc(vmid).status.stop.post()
+                proxmox.nodes(node).lxc(vmid).status.stop.post() # type: ignore
                 return _t.get("lxc_force_stopped", "Force Stopped")
 
         elif action == "reboot":
             try:
-                proxmox.nodes(node).lxc(vmid).status.reboot.post(timeout=20)
+                proxmox.nodes(node).lxc(vmid).status.reboot.post(timeout=20)  # type: ignore
                 return _t.get("lxc_rebooting", "Rebooting...")
             except Exception as e:
                 logger.warning(f"Graceful reboot for LXC {vmid} failed ({e}). Forcing sequential restart.")
-                proxmox.nodes(node).lxc(vmid).status.stop.post()
+                proxmox.nodes(node).lxc(vmid).status.stop.post() # type: ignore
                 for _ in range(10):
-                    curr_status = proxmox.nodes(node).lxc(vmid).status.current.get().get("status")
+                    # ✅ CORRECCIÓN: .current() en lugar de .current.get()
+                    curr_status = proxmox.nodes(node).lxc(vmid).status.current().get("status")
                     if curr_status == "stopped":
                         break
                     time.sleep(1)
-                proxmox.nodes(node).lxc(vmid).status.start.post()
+                proxmox.nodes(node).lxc(vmid).status.start.post() # type: ignore
                 return _t.get("lxc_force_restarted", "Force Restarted")
 
         else:

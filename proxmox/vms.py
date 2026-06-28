@@ -1,10 +1,10 @@
-import re
 import logging
 import time
-from typing import Dict, Any
+import subprocess
+from typing import Dict, Any, Optional
 
 from proxmox.client import get_proxmox_api, retry_proxmox_call
-from proxmox.utils import find_node_by_vmid, parse_vm_status
+from proxmox.utils import find_node_by_vmid, parse_lxc_status
 from config import PROXMOX
 from language.loader import load_translations
 from config import SETTINGS
@@ -14,115 +14,97 @@ _t = load_translations(getattr(SETTINGS, "language", "en"))
 
 
 @retry_proxmox_call(max_retries=3)
-def get_vm_list() -> list:
+def get_lxc_list() -> list:
     proxmox = get_proxmox_api(PROXMOX)
-    vms = []
+    lxcs = []
     try:
         for node in proxmox.nodes.get():
             node_name = node["node"]
-            for vm in proxmox.nodes(node_name).qemu.get():
-                if vm.get("template") == 1:
-                    continue
-
-                vmid = int(vm["vmid"])
+            for ct in proxmox.nodes(node_name).lxc.get():
+                vmid = int(ct["vmid"])
                 try:
-                    status = proxmox.nodes(node_name).qemu(vmid).status.current.get()
-                    config = proxmox.nodes(node_name).qemu(vmid).config()
-                    metrics = parse_vm_status(status, config)
-                    vms.append({
+                    status = proxmox.nodes(node_name).lxc(vmid).status.current()
+                    metrics = parse_lxc_status(status)
+                    lxcs.append({
                         "id": vmid,
-                        "name": vm.get("name", f"VM{vmid}"),
-                        "status": vm.get("status", "unknown"),
+                        "name": ct.get("name", f"LXC{vmid}"),
+                        "status": ct.get("status", "unknown"),
                         "node": node_name,
                         **metrics
                     })
                 except Exception as e:
-                    logger.error(_t.get("vm_error_metrics", "[VM {vmid}] Error retrieving hardware infrastructure logs: {e}").format(vmid=vmid, e=e))
-                    vms.append({
-                        "id": vmid,
-                        "name": "Error",
-                        "status": "error",
-                        "node": node_name,
-                        "uptime": 0,
-                        "cpu_usage_percent": 0,
-                        "mem_used_mb": 0,
-                        "mem_total_mb": 0,
-                        "mem_usage_percent": 0,
-                        "disk_used_gb": 0.0,
-                        "disk_total_gb": 0.0,
-                    })
+                    logger.error(_t.get("lxc_error_metrics", "[LXC {vmid}] Error retrieving node metrics: {e}").format(vmid=vmid, e=e))
     except Exception as e:
-        logger.error(_t.get("vm_error_list", "Error fetching Virtual Machine inventory: {e}").format(e=e))
-    return vms
+        logger.error(_t.get("lxc_error_list", "Error fetching LXC container list: {e}").format(e=e))
+    return lxcs
 
 
-def vm_action(vmid: int, action: str, node: str = None) -> str:
+def lxc_action(vmid: int, action: str, node: Optional[str] = None) -> str:
     proxmox = get_proxmox_api(PROXMOX)
 
     if node is None:
-        node = find_node_by_vmid(proxmox, vmid, "qemu")
+        node = find_node_by_vmid(proxmox, vmid, "lxc")
 
     if not node:
-        raise ValueError(_t.get("vm_not_found", "Virtual Machine with ID {vmid} was not found on any cluster node.").format(vmid=vmid))
+        raise ValueError(_t.get("lxc_not_found", "LXC Container with ID {vmid} was not found on any cluster node.").format(vmid=vmid))
 
     try:
         if action == "start":
-            proxmox.nodes(node).qemu(vmid).status.start.post()
-            return _t.get("vm_started", "Started")
+            proxmox.nodes(node).lxc(vmid).status.start.post()  # type: ignore
+            return _t.get("lxc_started", "Started")
 
         elif action == "stop":
             try:
-                proxmox.nodes(node).qemu(vmid).status.shutdown.post(timeout=30)
-                return _t.get("vm_stopping", "Stopping...")
+                proxmox.nodes(node).lxc(vmid).status.shutdown.post(timeout=20)  # type: ignore
+                return _t.get("lxc_stopping", "Stopping...")
             except Exception as e:
-                logger.warning(f"Graceful ACPI shutdown for VM {vmid} failed ({e}). Enforcing hard stop.")
-                proxmox.nodes(node).qemu(vmid).status.stop.post()
-                return _t.get("vm_force_stopped", "Force Stopped")
+                logger.warning(f"Graceful shutdown for LXC {vmid} failed ({e}). Enforcing hard stop.")
+                proxmox.nodes(node).lxc(vmid).status.stop.post()  # type: ignore
+                return _t.get("lxc_force_stopped", "Force Stopped")
 
         elif action == "reboot":
             try:
-                proxmox.nodes(node).qemu(vmid).status.reboot.post(timeout=30)
-                return _t.get("vm_rebooting", "Rebooting...")
+                proxmox.nodes(node).lxc(vmid).status.reboot.post(timeout=20)  # type: ignore
+                return _t.get("lxc_rebooting", "Rebooting...")
             except Exception as e:
-                logger.warning(f"Graceful reboot for VM {vmid} failed ({e}). Executing hardware reset.")
-                proxmox.nodes(node).qemu(vmid).status.reset.post()
-                return _t.get("vm_force_reseted", "Force Reseted")
+                logger.warning(f"Graceful reboot for LXC {vmid} failed ({e}). Forcing sequential restart.")
+                proxmox.nodes(node).lxc(vmid).status.stop.post()  # type: ignore
+                for _ in range(10):
+                    curr_status = proxmox.nodes(node).lxc(vmid).status.current().get("status")
+                    if curr_status == "stopped":
+                        break
+                    time.sleep(1)
+                proxmox.nodes(node).lxc(vmid).status.start.post()  # type: ignore
+                return _t.get("lxc_force_restarted", "Force Restarted")
 
         else:
-            raise ValueError(_t.get("vm_unknown_action", "Unknown action request parameters: {action}").format(action=action))
+            raise ValueError(_t.get("lxc_unknown_action", "Unknown action request parameters: {action}").format(action=action))
 
     except Exception as e:
-        raise Exception(_t.get("vm_action_failed", "Action '{action}' failed on VM {vmid}: {e}").format(action=action, vmid=vmid, e=e))
+        raise Exception(_t.get("lxc_action_failed", "Action '{action}' failed on LXC {vmid}: {e}").format(action=action, vmid=vmid, e=e))
 
 
-def execute_vm_command(vmid: int, node: str, command: str) -> str:
-    proxmox = get_proxmox_api(PROXMOX)
-    logger.debug(_t.get("vm_command_executing", "Executing command on VM {vmid}: {command}").format(vmid=vmid, command=command))
+def execute_lxc_command(vmid: int, node: str, command: str) -> str:
+    logger.debug(_t.get("lxc_command_executing", "Executing command on LXC {vmid}: {command}").format(vmid=vmid, command=command))
     try:
-        res = proxmox.nodes(node).qemu(vmid).agent.exec.post(command=["bash", "-c", command])
-        pid = res.get("pid")
-        if not pid:
-            return _t.get("vm_no_pid", "❌ Could not get PID from guest agent")
+        cmd = ["pct", "exec", str(vmid), "--", "bash", "-c", command]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
 
-        for _ in range(15):
-            status = proxmox.nodes(node).qemu(vmid).agent("exec-status").get(pid=pid)
-            if status.get("exited") == 1:
-                out = status.get("out-data", "")
-                err = status.get("err-data", "")
-                exitcode = status.get("exitcode")
-                if exitcode is not None and exitcode != 0:
-                    logger.warning(_t.get("vm_command_failed", "Command on VM {vmid} terminated with code {code}: {output}").format(vmid=vmid, code=exitcode, output=err or out))
-                    return _t.get("vm_command_failed", "❌ Command failed (code {code}): {output}").format(code=exitcode, output=err or out)
-                return out if out else (err if err else _t.get("vm_command_success", "✅ Command executed successfully"))
-            time.sleep(1)
+        out = result.stdout.strip()
+        err = result.stderr.strip()
 
-        logger.warning(_t.get("vm_command_timeout", "⏳ Timeout waiting for agent response"))
-        return _t.get("vm_command_timeout", "⏳ Timeout waiting for agent response")
+        if result.returncode != 0:
+            logger.warning(_t.get("lxc_command_failed", "Command on LXC {vmid} failed with code {code}. stderr: {err}").format(vmid=vmid, code=result.returncode, err=err))
+            return _t.get("lxc_command_error", "❌ Command failed (code {code}): {output}").format(code=result.returncode, output=err or out)
 
+        if not out and not err:
+            return _t.get("lxc_command_success", "✅ Command executed successfully (no output)")
+
+        return out if out else err
+
+    except subprocess.TimeoutExpired:
+        logger.error(_t.get("lxc_command_timeout", "⏳ Timeout (30s)"))
+        return _t.get("lxc_command_timeout", "⏳ Timeout (30s)")
     except Exception as e:
-        error_msg = str(e).lower()
-        if "agent" in error_msg or "qemu-guest-agent is not running" in error_msg:
-            logger.error(_t.get("vm_command_agent_unavailable", "❌ Error: QEMU Guest Agent not installed or not running"))
-            return _t.get("vm_command_agent_unavailable", "❌ Error: QEMU Guest Agent not installed or not running")
-        logger.error(f"Error executing command on VM {vmid}: {e}", exc_info=True)
-        return _t.get("vm_command_exception", "❌ Command execution failure: {e}").format(e=e)
+        logger.error(f"Error executing command on LXC {vmid}: {e}", exc_info=True)
+        return _t.get("lxc_command_exception", "❌ Error: {e}").format(e=e)
