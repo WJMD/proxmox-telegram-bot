@@ -6,6 +6,11 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from core.auth import require_auth
 
+from language.loader import load_translations
+from config import SETTINGS
+
+_t = load_translations(getattr(SETTINGS, "language", "en"))
+
 DANGEROUS_PATTERNS = [
     r"\brm\s+-rf\s+/\b",
     r"\bmkfs\b",

@@ -1,16 +1,20 @@
 import logging
 import time
 import subprocess
+from typing import Dict, Any
 
 from proxmox.client import get_proxmox_api, retry_proxmox_call
-from proxmox.utils import _human_gb, find_node_by_vmid
+from proxmox.utils import find_node_by_vmid, parse_lxc_status
 from config import PROXMOX
+from language.loader import load_translations
+from config import SETTINGS
 
 logger = logging.getLogger(__name__)
+_t = load_translations(getattr(SETTINGS, "language", "en"))
 
 
 @retry_proxmox_call(max_retries=3)
-def get_lxc_list():
+def get_lxc_list() -> list:
     proxmox = get_proxmox_api(PROXMOX)
     lxcs = []
     try:
@@ -20,120 +24,87 @@ def get_lxc_list():
                 vmid = int(ct["vmid"])
                 try:
                     status = proxmox.nodes(node_name).lxc(vmid).status.current.get()
-
-                    uptime = int(status.get("uptime", 0))
-                    cpu = round(float(status.get("cpu", 0)) * 100, 1)
-                    mem_used = int(status.get("mem", 0)) // 1024 // 1024
-                    mem_total = int(status.get("maxmem", 1)) // 1024 // 1024
-                    mem_pct = round(mem_used / mem_total * 100, 1) if mem_total else 0
-
-                    used_gb = total_gb = 0.0
-
-                    if "rootfs" in status:
-                        used_gb += _human_gb(status["rootfs"].get("used", 0))
-                        total_gb += _human_gb(
-                            status["rootfs"].get("total", 0)
-                        ) or _human_gb(status["rootfs"].get("max", 0))
-
-                    for key, val in status.items():
-                        if key.startswith("mp") or key.startswith("mountpoint"):
-                            if isinstance(val, dict):
-                                used_gb += _human_gb(val.get("used", 0))
-                                total_gb += _human_gb(val.get("total", 0)) or _human_gb(
-                                    val.get("max", 0)
-                                )
-
-                    lxcs.append(
-                        {
-                            "id": vmid,
-                            "name": ct.get("name", f"LXC{vmid}"),
-                            "status": ct.get("status", "unknown"),
-                            "node": node_name,
-                            "uptime": uptime,
-                            "cpu_usage_percent": cpu,
-                            "mem_used_mb": mem_used,
-                            "mem_total_mb": mem_total,
-                            "mem_usage_percent": mem_pct,
-                            "disk_used_gb": round(used_gb, 1),
-                            "disk_total_gb": (
-                                round(total_gb, 1) if total_gb > 0 else 0.0
-                            ),
-                        }
-                    )
+                    metrics = parse_lxc_status(status)
+                    lxcs.append({
+                        "id": vmid,
+                        "name": ct.get("name", f"LXC{vmid}"),
+                        "status": ct.get("status", "unknown"),
+                        "node": node_name,
+                        **metrics
+                    })
                 except Exception as e:
-                    logger.error(f"[LXC {vmid}] ошибка получения данных: {e}")
+                    logger.error(_t.get("lxc_error_metrics", "[LXC {vmid}] Error retrieving node metrics: {e}").format(vmid=vmid, e=e))
     except Exception as e:
-        logger.error(f"Ошибка получения списка LXC: {e}")
+        logger.error(_t.get("lxc_error_list", "Error fetching LXC container list: {e}").format(e=e))
     return lxcs
 
 
-def lxc_action(vmid, action, node=None):
+def lxc_action(vmid: int, action: str, node: str = None) -> str:
     proxmox = get_proxmox_api(PROXMOX)
 
     if node is None:
         node = find_node_by_vmid(proxmox, vmid, "lxc")
 
     if not node:
-        raise ValueError(f"Контейнер с ID {vmid} не найден ни на одной ноде.")
+        raise ValueError(_t.get("lxc_not_found", "LXC Container with ID {vmid} was not found on any cluster node.").format(vmid=vmid))
 
     try:
         if action == "start":
             proxmox.nodes(node).lxc(vmid).status.start.post()
-            return "Запущен"
+            return _t.get("lxc_started", "Started")
 
         elif action == "stop":
             try:
                 proxmox.nodes(node).lxc(vmid).status.shutdown.post(timeout=20)
-                return "Выключается..."
+                return _t.get("lxc_stopping", "Stopping...")
             except Exception as e:
-                logger.warning(
-                    f"Мягкое выключение {vmid} не удалось ({e}), принудительная остановка."
-                )
+                logger.warning(f"Graceful shutdown for LXC {vmid} failed ({e}). Enforcing hard stop.")
                 proxmox.nodes(node).lxc(vmid).status.stop.post()
-                return "Принудительно остановлен"
+                return _t.get("lxc_force_stopped", "Force Stopped")
 
         elif action == "reboot":
             try:
                 proxmox.nodes(node).lxc(vmid).status.reboot.post(timeout=20)
-                return "Перезагружается..."
+                return _t.get("lxc_rebooting", "Rebooting...")
             except Exception as e:
-                logger.warning(
-                    f"Мягкая перезагрузка {vmid} не удалась ({e}), принудительный рестарт."
-                )
+                logger.warning(f"Graceful reboot for LXC {vmid} failed ({e}). Forcing sequential restart.")
                 proxmox.nodes(node).lxc(vmid).status.stop.post()
-
                 for _ in range(10):
-                    curr_status = (
-                        proxmox.nodes(node).lxc(vmid).status.current.get().get("status")
-                    )
+                    curr_status = proxmox.nodes(node).lxc(vmid).status.current.get().get("status")
                     if curr_status == "stopped":
                         break
                     time.sleep(1)
-
                 proxmox.nodes(node).lxc(vmid).status.start.post()
-                return "Принудительно перезапущен"
+                return _t.get("lxc_force_restarted", "Force Restarted")
 
         else:
-            raise ValueError(f"Неизвестное действие: {action}")
+            raise ValueError(_t.get("lxc_unknown_action", "Unknown action request parameters: {action}").format(action=action))
 
     except Exception as e:
-        raise Exception(f"Ошибка {action} LXC {vmid}: {e}")
+        raise Exception(_t.get("lxc_action_failed", "Action '{action}' failed on LXC {vmid}: {e}").format(action=action, vmid=vmid, e=e))
 
 
-def execute_lxc_command(vmid, node, command):
+def execute_lxc_command(vmid: int, node: str, command: str) -> str:
+    logger.debug(_t.get("lxc_command_executing", "Executing command on LXC {vmid}: {command}").format(vmid=vmid, command=command))
     try:
         cmd = ["pct", "exec", str(vmid), "--", "bash", "-c", command]
-
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, check=False)
 
         out = result.stdout.strip()
         err = result.stderr.strip()
 
+        if result.returncode != 0:
+            logger.warning(_t.get("lxc_command_failed", "Command on LXC {vmid} failed with code {code}. stderr: {err}").format(vmid=vmid, code=result.returncode, err=err))
+            return _t.get("lxc_command_error", "❌ Command failed (code {code}): {output}").format(code=result.returncode, output=err or out)
+
         if not out and not err:
-            return "✅ Команда выполнена (без вывода)"
+            return _t.get("lxc_command_success", "✅ Command executed successfully (no output)")
 
         return out if out else err
+
     except subprocess.TimeoutExpired:
-        return "⏳ Превышено время выполнения команды (таймаут 30 секунд)."
+        logger.error(_t.get("lxc_command_timeout", "⏳ Timeout (30s)"))
+        return _t.get("lxc_command_timeout", "⏳ Timeout (30s)")
     except Exception as e:
-        return f"❌ Ошибка выполнения pct exec: {e}"
+        logger.error(f"Error executing command on LXC {vmid}: {e}", exc_info=True)
+        return _t.get("lxc_command_exception", "❌ Error: {e}").format(e=e)

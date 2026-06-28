@@ -6,6 +6,11 @@ from proxmox.vms import execute_vm_command
 from proxmox.lxcs import execute_lxc_command
 from core.auth import require_auth  # если у тебя есть декоратор
 
+from language.loader import load_translations
+from config import SETTINGS
+
+_t = load_translations(getattr(SETTINGS, "language", "en"))
+
 logger = logging.getLogger(__name__)
 
 

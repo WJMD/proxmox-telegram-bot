@@ -1,28 +1,36 @@
 import psutil
 import logging
 from config import ALERTS
-from system.sensors import get_temp
+from system.sensors import get_temperatures
 
+from language.loader import load_translations
+from config import SETTINGS
+
+_t = load_translations(getattr(SETTINGS, "language", "en"))
 logger = logging.getLogger(__name__)
 
 
 def check_cpu_temp():
     try:
-        temps = get_temp()
+        temps = get_temperatures()
         if not temps:
             return False, 0
 
-        cpu_temp = next((t["temp"] for t in temps if t["sensor"] == "CPU"), None)
+        # Buscar sensor de CPU
+        cpu_temp = None
+        for t in temps:
+            if "cpu" in t["sensor"].lower() or "core" in t["sensor"].lower():
+                if cpu_temp is None or t["temp"] > cpu_temp:
+                    cpu_temp = t["temp"]
 
-        if cpu_temp is None and temps:
+        # Si no encontró sensor de CPU, usar el más alto
+        if cpu_temp is None:
             cpu_temp = max([t["temp"] for t in temps])
 
-        if cpu_temp is None:
-            return False, 0
-
         return cpu_temp > ALERTS.cpu_temp_threshold, round(cpu_temp, 1)
+
     except Exception as e:
-        logger.error(f"❌ Ошибка проверки температуры: {e}")
+        logger.error(f"❌ Error checking temperature: {e}")
         return False, 0
 
 
@@ -31,7 +39,7 @@ def check_cpu_usage():
         usage = psutil.cpu_percent(interval=None)
         return usage > ALERTS.cpu_usage_threshold, round(usage, 1)
     except Exception as e:
-        logger.error(f"❌ Ошибка загрузки CPU: {e}")
+        logger.error(f"❌ Error checking CPU: {e}")
         return False, 0
 
 
@@ -40,5 +48,5 @@ def check_ram_usage():
         ram = psutil.virtual_memory()
         return ram.percent > ALERTS.ram_usage_threshold, round(ram.percent, 1)
     except Exception as e:
-        logger.error(f"❌ Ошибка RAM: {e}")
+        logger.error(f"❌ Error checking RAM: {e}")
         return False, 0

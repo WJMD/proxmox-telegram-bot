@@ -5,6 +5,11 @@ from handlers.console import console
 from handlers.resources import vm_list_cmd, lxc_list_cmd, vm_callback, lxc_callback
 from handlers.terminal import handle_terminal_input
 
+from language.loader import load_translations
+from config import SETTINGS
+
+_t = load_translations(getattr(SETTINGS, "language", "en"))
+
 HANDLERS = [
     CommandHandler(["start", "help"], start),
     CommandHandler("status", status),

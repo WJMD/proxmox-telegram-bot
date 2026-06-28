@@ -106,7 +106,7 @@ ALERTS = AlertsConfig(
     check_interval=get_env_int("CHECK_INTERVAL", 300),
 )
 
-# Global application settings (Default user-facing language: "es")
+# Global application settings (Default language: "en")
 SETTINGS = SettingsConfig(
-    language=get_env("LANGUAGE", default="es")
+    language=get_env("LANGUAGE", default="en")
 )

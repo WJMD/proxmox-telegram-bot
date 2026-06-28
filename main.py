@@ -7,6 +7,21 @@ from core.logger import setup_logging
 from config import TELEGRAM
 from handlers.routers import HANDLERS
 from services.alerts import AlertManager
+import signal
+from proxmox.client import close_connection
+
+from language.loader import load_translations
+from config import SETTINGS
+
+_t = load_translations(getattr(SETTINGS, "language", "en"))
+
+def signal_handler(signum, frame):
+    logger.info("Received signal to shut down...")
+    close_connection()
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
 
 setup_logging()
 logger = logging.getLogger(__name__)

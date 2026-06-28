@@ -2,6 +2,11 @@ from proxmoxer import ProxmoxAPI
 import os
 from dotenv import load_dotenv
 
+from language.loader import load_translations
+from config import SETTINGS
+
+_t = load_translations(getattr(SETTINGS, "language", "en"))
+
 load_dotenv()
 
 host = os.getenv("HOST")

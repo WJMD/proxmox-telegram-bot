@@ -4,7 +4,7 @@
 [![python-telegram-bot](https://img.shields.io/badge/telegram--bot-v22.8-2CA5E0.svg?logo=telegram)](https://python-telegram-bot.org)
 [![Proxmox VE](https://img.shields.io/badge/Proxmox-8.x%2B-EC6601.svg?logo=proxmox)](https://proxmox.com)
 [![License MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.0-blue.svg)](https://github.com/wandel-dr/proxmox-telegram-bot)
+[![Version](https://img.shields.io/badge/Version-2.0-blue.svg)](https://github.com/WJMD/proxmox-telegram-bot)
 
 > **The most advanced and secure Telegram bot for Proxmox VE management in 2026**
 > Everything a system administrator needs: monitoring, alerts, VM/LXC management, and a secure shell—directly in your chat.
@@ -45,7 +45,7 @@ This project is an updated and enhanced fork of the original work developed by *
 
 ```bash
 cd /opt
-git clone [https://github.com/wandel-dr/proxmox-telegram-bot.git](https://github.com/wandel-dr/proxmox-telegram-bot.git)
+git clone [https://github.com/WJMD/proxmox-telegram-bot.git](https://github.com/WJMD/proxmox-telegram-bot.git)
 cd proxmox-telegram-bot
 
 python3 -m venv venv
@@ -65,12 +65,14 @@ WHITELIST=your_telegram_id
 
 # Proxmox (API Token is highly recommended!)
 HOST=your_proxmox_ip
-PROXMOX_TOKEN_NAME=telegram-bot@pve!
+PROXMOX_USER=BotTelegram@pve
+PROXMOX_PASSWORD=Your Password 
+PROXMOX_TOKEN_NAME=telegram-bot@pve! (TOKEN ID)
 PROXMOX_TOKEN_VALUE=your_token_value
 PROXMOX_PORT=8006
 
 # Alert & Application Settings
-LANGUAGE=es
+LANGUAGE=en
 CPU_TEMP_THRESHOLD=80
 CPU_USAGE_THRESHOLD=70
 RAM_USAGE_THRESHOLD=70

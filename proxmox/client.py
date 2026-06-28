@@ -5,14 +5,29 @@ import requests
 import urllib3
 from functools import wraps
 
+from language.loader import load_translations
+from config import SETTINGS
+
+_t = load_translations(getattr(SETTINGS, "language", "en"))
+
+_proxmox_instance = None
+_lock = threading.Lock()
+
 logger = logging.getLogger(__name__)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+def close_connection():
+    global _proxmox_instance
+    if _proxmox_instance:
+        _proxmox_instance.session.close()
+        _proxmox_instance = None
+_lock = threading.Lock()
 
 _proxmox_instance = None
 _lock = threading.Lock()
 
 class ProxmoxAPI:
-    """Cliente simple para Proxmox API usando requests."""
+    """Simple Proxmox API client using requests."""
     def __init__(self, host, token_name, token_value, port=8006, verify_ssl=False, timeout=30):
         self.base_url = f"https://{host}:{port}/api2/json"
         self.session = requests.Session()
@@ -34,7 +49,6 @@ class ProxmoxAPI:
     def post(self, path, **kwargs):
         return self._request('POST', path, **kwargs)
 
-    # Propiedades para acceder a nodos, qemu, lxc
     @property
     def nodes(self):
         return NodeProxy(self)
@@ -157,9 +171,7 @@ class LxcStatusProxy:
 
 
 def get_proxmox_api(config):
-    """
-    Returns a singleton connection to the Proxmox API using token authentication.
-    """
+    """Returns a singleton connection to the Proxmox API using token authentication."""
     global _proxmox_instance
 
     if _proxmox_instance is not None:
@@ -170,7 +182,7 @@ def get_proxmox_api(config):
             return _proxmox_instance
 
         try:
-            logger.info(f"Создаем соединение с Proxmox: {config.host}")
+            logger.info(f"Establishing connection with Proxmox host: {config.host}")
 
             _proxmox_instance = ProxmoxAPI(
                 host=config.host,
@@ -178,17 +190,17 @@ def get_proxmox_api(config):
                 token_value=config.token_value,
                 port=config.port,
                 verify_ssl=getattr(config, 'verify_ssl', False),
-                timeout=30,
+                timeout = getattr(config, 'timeout', 30),
             )
 
-            # Probar conexión
+            # Test connection
             _proxmox_instance.nodes.get()
 
-            logger.info("Соединение с Proxmox установлено")
+            logger.info("Connection to Proxmox successfully established")
             return _proxmox_instance
 
         except Exception as e:
-            logger.error(f"Ошибка подключения к Proxmox: {e}")
+            logger.error(f"Failed to connect to Proxmox: {e}")
             _proxmox_instance = None
             raise
 
@@ -206,10 +218,13 @@ def retry_proxmox_call(max_retries=3, delay=1, catch_exceptions=(Exception,)):
                     if attempt < max_retries - 1:
                         sleep_time = delay * (2 ** attempt)
                         logger.warning(
-                            f"Попытка {attempt + 1}/{max_retries} не удалась: {e}. Повтор через {sleep_time}с"
+                            f"Attempt {attempt + 1}/{max_retries} failed: {e}. Retrying in {sleep_time}s"
                         )
                         time.sleep(sleep_time)
-            logger.error(f"Все {max_retries} попыток не удались: {last_exception}")
-            raise last_exception
+            logger.error(f"All {max_retries} attempts failed: {last_exception}")
+            if last_exception is not None:
+                raise last_exception
+            else:
+                    raise RuntimeError("Unknown error in retry_proxmox_call")
         return wrapper
     return decorator
