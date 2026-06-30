@@ -4,23 +4,25 @@
 [![python-telegram-bot](https://img.shields.io/badge/telegram--bot-v22.8-2CA5E0.svg?logo=telegram)](https://python-telegram-bot.org)
 [![Proxmox VE](https://img.shields.io/badge/Proxmox-8.x%2B-EC6601.svg?logo=proxmox)](https://proxmox.com)
 [![License MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-2.0-blue.svg)](https://github.com/WJMD/proxmox-telegram-bot)
+[![Version](https://img.shields.io/badge/Version-2.1-blue.svg)](https://github.com/WJMD/proxmox-telegram-bot)
 
-> **The most advanced and secure Telegram bot for Proxmox VE management in 2026**
-> Everything a system administrator needs: monitoring, alerts, VM/LXC management, and a secure shell—directly in your chat.
+> **A secure and modern Telegram bot to monitor and manage your Proxmox VE homelab.** > Everything you need: host status, VM/LXC lists, secure console, and automatic alerts — all from your chat.
 
 ---
 
 ## 👥 Credits & Attribution
 
-This project is an updated and enhanced fork of the original work developed by **Sliva**. 
-* **Original Creator:** Sliva 
+This project is an updated and enhanced fork of the original work developed by **Sliva**.  
+* **Original Creator:** Sliva  
 * **Original Repository:** [sliva-dev/proxmox-telegram-bot](https://github.com/sliva-dev/proxmox-telegram-bot)
 
 ### 🚀 Improvements in this Fork:
-* **Full Internationalization (i18n):** Implemented a dynamic language architecture using separate JSON dictionaries (`language/` directory) supporting English, Spanish, and Russian.
-* **Codebase Refactoring:** Standardized all internal variables, system logs, comments, and exceptions to professional English following clean code best practices.
-* **Infrastructure Upgrades:** Updated critical core dependencies (`python-telegram-bot v22.8`, `proxmoxer v2.3.0`, and `psutil v7.2.2`) to ensure full stability with 2026 systems and modern Proxmox VE APIs.
+* **Full Internationalization (i18n):** Dynamic language support using JSON dictionaries (`language/` directory) for English, Spanish, and Russian.
+* **Codebase Refactoring:** Clean English code, logs, and comments following best practices.
+* **Modern Dependencies:** Updated to `python-telegram-bot v22.8`, `proxmoxer v2.3.0`, and `psutil v7.2.2` for 2026 compatibility.
+* **Systemd Service:** Easy autostart and management with `systemctl`.
+* **Better Metrics:** Correct parsing of LXC and VM disk usage directly from Proxmox API.
+* **Improved Security:** Enhanced console blacklist and whitelist protection.
 
 ---
 
@@ -28,18 +30,28 @@ This project is an updated and enhanced fork of the original work developed by *
 
 | Category | Functionality | Description |
 | :--- | :--- | :--- |
-| **📊 Monitoring** | Host Status (`/status`) | Uptime, CPU load, RAM usage, storage, and temperatures |
-| | VM/LXC Lists (`/vm`, `/lxc`) | Button-based management, real-time metrics |
-| **⚡ Management** | VM/LXC Control | Start / Stop / Reboot with confirmation prompts |
+| **📊 Monitoring** | Host Status (`/status`) | Uptime, CPU load, RAM usage, disks, temperature, and battery |
+| | VM/LXC Lists (`/vm`, `/lxc`) | Detailed real-time metrics for each resource |
+| **⚡ Management** | VM/LXC Control | Start / Stop / Reboot with confirmation (via inline buttons) |
 | | Cluster Support | Automatic node lookup by VMID |
 | **🔧 Utilities** | Secure Console (`/console`) | 30s timeout, command blacklist, output truncation |
 | | Automatic Alerts | Overheating, high CPU, and high RAM usage monitoring |
-| **🔐 Security** | Whitelist Access | Only authorized Telegram IDs allowed |
-| | Access Attempt Alerts | Administrators receive instant notifications of unauthorized actions |
+| **🔒 Security** | Whitelist Access | Only authorized Telegram IDs allowed |
+| | Unauthorized Attempt Alerts | Admins receive instant notifications of suspicious activity |
+| | Console Blacklist | Blocks dangerous commands (`rm -rf /`, `mkfs`, `shutdown`, etc.) |
+| | Execution Timeout | Enforced 30-second limit per console command |
+| **🌐 Language** | Multi-language | English, Spanish, Russian (easily extendable) |
 
 ---
 
 ## 🚀 Quick Start
+
+### Prerequisites
+
+- Proxmox VE 8.x or later
+- Python 3.11+
+- A Telegram bot token (from [@BotFather](https://t.me/BotFather))
+- Your Telegram user ID (get it from [@userinfobot](https://t.me/userinfobot))
 
 ### Installation
 
@@ -66,13 +78,13 @@ WHITELIST=your_telegram_id
 # Proxmox (API Token is highly recommended!)
 HOST=your_proxmox_ip
 PROXMOX_USER=BotTelegram@pve
-PROXMOX_PASSWORD=Your Password 
-PROXMOX_TOKEN_NAME=telegram-bot@pve! (TOKEN ID)
+PROXMOX_TOKEN_NAME=BotTelegram@pve!bottelegram
 PROXMOX_TOKEN_VALUE=your_token_value
 PROXMOX_PORT=8006
+VERIFY_SSL=False
+LANGUAGE=en
 
 # Alert & Application Settings
-LANGUAGE=en
 CPU_TEMP_THRESHOLD=80
 CPU_USAGE_THRESHOLD=70
 RAM_USAGE_THRESHOLD=70
@@ -81,14 +93,55 @@ CHECK_INTERVAL=30
 ```
 
 > 💡 **How to create an API token in Proxmox VE:** > Go to `Datacenter → Permissions → API Tokens → Add`.
-> Required Permissions: `/`
+> **Important:** Disable **Privilege Separation** and assign the token the `Administrator` role (or a custom role with `VM.Audit`, `LXC.Audit`, `Sys.Audit`, and `VM.PowerMgmt` permissions) on the `/` path with **Propagate** enabled.
 
-### Execution
+### Test Manually
 
 ```bash
 python main.py
 
 ```
+
+If everything works, you'll see the bot online in your Telegram chat.
+
+---
+
+## 🔄 Autostart via systemd
+
+To run the bot as a background service that starts automatically on boot:
+
+1. **Copy the service file** (already included in `system/`):
+
+```bash
+cp system/proxmox-telegram-bot.service /etc/systemd/system/
+
+```
+
+2. **Reload systemd and enable the service**:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now proxmox-telegram-bot.service
+
+```
+
+3. **Check status and logs**:
+
+```bash
+systemctl status proxmox-telegram-bot.service
+journalctl -u proxmox-telegram-bot.service -f
+
+```
+
+### Service Management Commands
+
+| Command | Action |
+| --- | --- |
+| `systemctl start proxmox-telegram-bot.service` | Start the bot |
+| `systemctl stop proxmox-telegram-bot.service` | Stop the bot |
+| `systemctl restart proxmox-telegram-bot.service` | Restart the bot |
+| `systemctl status proxmox-telegram-bot.service` | Check status |
+| `journalctl -u proxmox-telegram-bot.service -f` | Follow logs |
 
 ---
 
@@ -96,45 +149,13 @@ python main.py
 
 | Command | Description |
 | --- | --- |
-| `/start` | Welcome message and command list |
-| `/status` | Complete host summary status |
-| `/vm` | List of all Virtual Machines |
-| `/lxc` | List of all LXC Containers |
-| `/console <cmd>` | Execute a terminal command (`ls`, `mkdir`, etc.) |
+| `/start` | Show the help menu with all available commands |
+| `/status` | Display host status (uptime, CPU, RAM, disks, temperature, battery) |
+| `/vm` | List all Virtual Machines with detailed metrics (CPU, RAM, disk) |
+| `/lxc` | List all LXC Containers with detailed metrics (CPU, RAM, disk) |
+| `/console <cmd>` | Execute a command on the host (e.g., `/console ls -la`) |
 
----
-
-## 🔧 Autostart via systemd
-
-Create the service file `/etc/systemd/system/proxmox-bot.service`:
-
-```ini
-[Unit]
-Description=Proxmox VE Telegram Bot
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/proxmox-telegram-bot
-ExecStart=/opt/proxmox-telegram-bot/venv/bin/python /opt/proxmox-telegram-bot/main.py
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-
-```
-
-Enable and start the background service:
-
-```bash
-systemctl daemon-reload
-systemctl enable --now proxmox-bot.service
-
-```
+> ⚠️ **Console restrictions:** > The bot blocks dangerous commands like `rm -rf /`, `mkfs`, `fdisk`, `dd`, `shutdown`, `reboot`, fork bombs, and other destructive operations. Commands are limited to 30 seconds and output is truncated to 4000 characters.
 
 ---
 
@@ -147,7 +168,7 @@ systemctl enable --now proxmox-bot.service
 * ✅ **Secured Console** — Strict shell command blacklist protecting your infrastructure against:
 * `rm -rf /`, `mkfs`, `fdisk`, `dd of=/dev/`, `wipefs`
 * `shutdown`, `reboot`, `halt`, `poweroff`
-* Fork bombs and dangerous logical syntax constructions.
+* Fork bombs and dangerous logical syntax constructions
 
 
 * ✅ **Execution Timeouts** — Enforced 30-second maximum timeout per console command to prevent terminal hangs.
@@ -164,6 +185,7 @@ proxmox-telegram-bot/
 ├── requirements.txt                      # Project dependencies
 ├── .env                                  # Environment variables (git-ignored)
 ├── README.md                             # Project documentation
+├── install.sh                            # Automated installation script
 │
 ├── core/                                 # Core bot modules
 │   ├── __init__.py
@@ -178,16 +200,16 @@ proxmox-telegram-bot/
 │   └── routers.py                        # Command routing logic
 │
 ├── language/                             # Localization dictionaries (JSON)
-│   ├── en.json
-│   ├── es.json
-│   └── ru.json
+│   ├── en.json                           # English
+│   ├── es.json                           # Spanish
+│   └── ru.json                           # Russian
 │
 ├── proxmox/                              # Proxmox API integration
 │   ├── __init__.py
-│   ├── client.py                         # API client instance
+│   ├── client.py                         # API client (requests-based)
 │   ├── vms.py                            # Virtual Machine operations
 │   ├── lxcs.py                           # LXC Container operations
-│   └── utils.py                          # Proxmox helper utilities
+│   └── utils.py                          # Helper utilities
 │
 ├── services/                             # Additional internal services
 │   ├── __init__.py
@@ -195,25 +217,21 @@ proxmox-telegram-bot/
 │
 └── system/                               # System level utilities
     ├── __init__.py
-    ├── checks.py                         # System metrics (disk, RAM, system load)
-    └── sensors.py                        # Thermal monitoring and hardware sensors
+    ├── checks.py                         # System metrics (CPU, RAM, temperature)
+    ├── sensors.py                        # Hardware sensors and battery
+    └── proxmox-telegram-bot.service      # systemd service file
 
 ```
 
 ---
 
-## 📸 Demo
-
-### 🖥️ Bot Interface in Action
-
----
-
-## 📄 License
+## 📝 License
 
 **MIT License** — Full usage freedom with liability disclaimer.
 
 ```text
-MIT License © 2025-2026 Sliva
+MIT License © 2025-2026 Sliva (Original)
+Enhanced and maintained by Wander J. (2026)
 
 ```
 
@@ -221,13 +239,12 @@ MIT License © 2025-2026 Sliva
 
 ### ⭐ If you found this project useful, give it a star!
 
-### 🐛 Found a bug? — Open an Issue
+### 🐛 Found a bug? — [Open an Issue](https://github.com/WJMD/proxmox-telegram-bot/issues)
 
 ### 💡 Want to help? — Pull Requests are welcome!
 
-**Original Author:** [Sliva]((https://www.google.com/search?q=https://github.com/sliva-dev))
+**Original Author:** [Sliva](https://github.com/sliva-dev)
 
-**Maintained and Enhanced by:** [Wander J.](https://www.google.com/search?q=https://github.com/WJMD)
+**Maintained and Enhanced by:** [Wander J.](https://github.com/WJMD)
 
-**Version:** 2.1 (June 2026)
-
+**Version:** 2.1 — June 2026

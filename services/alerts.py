@@ -9,7 +9,25 @@ from language.loader import load_translations
 
 
 # Initialize the global translation dictionary
+# --- Carga de traducciones ---
 CURRENT_LANGUAGE = getattr(SETTINGS, "language", "en")
+
+def load_translations(lang):
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_path, "..", "language", f"{lang}.json")
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        fallback_path = os.path.join(base_path, "..", "language", "en.json")
+        try:
+            with open(fallback_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            logger.warning("⚠️ No language dictionary files found in 'language/' directory.")
+            return {}
+
+
 _t = load_translations(CURRENT_LANGUAGE)
 
 logger = logging.getLogger(__name__)
@@ -20,6 +38,10 @@ class AlertManager:
         self.app = application
         self.running = False
         self.task = None
+         # Variables to store the previous battery state
+        self.last_power_plugged = None
+        self.last_battery_percent = None
+        self.battery_60_alerted = False  # to prevent spam
 
     async def start(self):
         self.running = True
@@ -82,6 +104,58 @@ class AlertManager:
                 await self._send_alert(msg)
         except Exception as e:
             logger.error(_t.get("error_ram_check").format(e=e))
+            
+        # ---- News alerts of Battery ----
+        try:
+            battery = await asyncio.to_thread(get_battery_status)
+            if battery["has_battery"]:
+                percent = battery["percent"]
+                is_plugged = battery["is_charging"] or battery["status"] == "full"
+
+                # Initial status: save the initial state without sending an alert.
+                if self.last_power_plugged is None:
+                    self.last_power_plugged = is_plugged
+                    self.last_battery_percent = percent
+                    return
+
+                # Change from plugged to unplugged
+                if self.last_power_plugged and not is_plugged:
+                    msg = _t.get("alert_power_unplugged").format(percent=percent)
+                    await self._send_alert(msg)
+                    self.battery_60_alerted = False  # Reset flag for the 60% alert
+
+                # Change from unplugged to plugged
+                elif not self.last_power_plugged and is_plugged:
+                    msg = _t.get("alert_power_restored").format(percent=percent)
+                    await self._send_alert(msg)
+
+                # If it's unplugged and the battery is low at 60%, alert (only once)
+                if not is_plugged and percent <= 60 and not self.battery_60_alerted:
+                    msg = _t.get("alert_battery_60").format(percent=percent)
+                    await self._send_alert(msg)
+                    self.battery_60_alerted = True
+
+                # If the battery goes above 60% (for example, if it's plugged in again), reset the flag
+                if is_plugged and percent > 60:
+                    self.battery_60_alerted = False
+
+                # Update the previous state
+                self.last_power_plugged = is_plugged
+                self.last_battery_percent = percent
+
+        except Exception as e:
+            logger.error(f"❌ Error checking battery status: {e}")
+
+    async def _send_alert(self, text: str):
+        try:
+            for chat_id in TELEGRAM.whitelist:
+                await self.app.bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode="HTML"
+                )
+            logger.info(_t.get("alert_sent_log").format(text=text))
+        except Exception as e:
+            logger.error(_t.get("error_send_alert").format(e=e))
+
 
     async def _send_alert(self, text: str):
         try:

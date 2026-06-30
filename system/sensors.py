@@ -134,7 +134,7 @@ def get_status() -> str:
 
         # RAM
         lines.append(
-            _t.get('status_ram', '💻 RAM: {used}GB / {total}GB ({pct}%)')
+            _t.get('status_ram', '💻 RAM: {used}GB / TOTAL: {total}GB - USED: {pct}%')
             .format(used=f"{mem_used_gb:.1f}", total=f"{mem_total_gb:.1f}", pct=f"{mem_pct:.1f}")
         )
 
@@ -182,7 +182,7 @@ def format_uptime(seconds: float) -> str:
     h = (seconds % 86400) // 3600
     m = (seconds % 3600) // 60
     if d:
-        return f"{d}d {h}h {m}m"
+        return f"{d}d / {h}h / {m}m"
     if h:
-        return f"{h}h {m}m"
+        return f"{h}h / {m}m"
     return f"{m}m"
