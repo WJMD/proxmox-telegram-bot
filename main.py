@@ -1,24 +1,23 @@
 import logging
 import sys
+import signal
 
 from telegram import Update
 from telegram.ext import Application
+
 from core.logger import setup_logging
-from config import TELEGRAM
+from config import TELEGRAM, SETTINGS
 from handlers.routers import HANDLERS
 from services.alerts import AlertManager
-import signal
 from proxmox.client import close_connection
-
 from language.loader import load_translations
-from config import SETTINGS
 
-_t = load_translations(getattr(SETTINGS, "language", "en"))
 
 def signal_handler(signum, frame):
     logger.info("Received signal to shut down...")
     close_connection()
     sys.exit(0)
+
 
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
@@ -28,25 +27,21 @@ logger = logging.getLogger(__name__)
 
 
 async def post_init(application: Application):
-    """Хук, который выполняется ДО начала поллинга."""
-    logger.info("Запуск фоновых сервисов...")
-
+    logger.info("Starting background services...")
     alert_manager = AlertManager(application)
     application.bot_data["alert_manager"] = alert_manager
-
     await alert_manager.start()
 
 
 async def post_shutdown(application: Application):
-    """Хук, который выполняется ПЕРЕД полной остановкой бота."""
-    logger.info("Остановка фоновых сервисов...")
+    logger.info("Stopping background services...")
     alert_manager = application.bot_data.get("alert_manager")
     if alert_manager:
         await alert_manager.stop()
 
 
 def main():
-    logger.info("Сборка приложения...")
+    logger.info("Building application...")
     logger.debug(f"Python version: {sys.version}")
 
     try:
@@ -63,14 +58,14 @@ def main():
         for handler in HANDLERS:
             application.add_handler(handler)
 
-        logger.info("Бот запущен! Ожидание обновлений...")
+        logger.info("Bot started! Waiting for updates...")
 
         application.run_polling(
             allowed_updates=Update.ALL_TYPES, drop_pending_updates=True
         )
 
     except Exception as e:
-        logger.error(f"Критическая ошибка при запуске бота: {e}", exc_info=True)
+        logger.error(f"Critical error starting bot: {e}", exc_info=True)
         sys.exit(1)
 
 
@@ -78,4 +73,4 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        logger.info("Процесс остановлен пользователем.")
+        logger.info("Process stopped by user.")
