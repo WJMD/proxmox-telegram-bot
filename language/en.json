@@ -60,7 +60,7 @@
   "status_title": "📊 Host Status:",
   "status_uptime": "⏰ Uptime:",
   "status_cpu": "⚡ CPU Load: 1m: {cpu1} ({pct1}%), 5m: {cpu5} ({pct5}%), 15m: {cpu15} ({pct15}%)",
-  "status_ram": "💻 RAM: {used}GB / {total}GB ({pct}%)",
+  "status_ram": "💻 RAM: {used}GB / TOTAL: {total}GB - USED: {pct}%",
   "status_disks": "💽 Disks:",
   "status_disk": "🖥️ {name}: {pct}% ({used}GB / {total}GB)",
   "status_temperatures": "🌡️ Temperatures:",

@@ -18,11 +18,14 @@ def format_uptime(seconds: int) -> str:
     d = seconds // 86400
     h = (seconds % 86400) // 3600
     m = (seconds % 3600) // 60
+    parts = []
     if d:
-        return f"{d}d {h}h {m}m"
+        parts.append(f"{d}d")
     if h:
-        return f"{h}h {m}m"
-    return f"{m}m"
+        parts.append(f"{h}h")
+    if m:
+        parts.append(f"{m}m")
+    return " ".join(parts) if parts else "0m"
 
 def human_size(bytes_val: int, unit: str = "GB") -> float:
     units = {"B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3}
