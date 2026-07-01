@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.18.0] - 2026-07-01
+
+### Added
+- **Event System**: Implemented a summary-based event system for internet outages
+  - New `system-event-manager.sh` to store and send event summaries when internet is restored
+  - New `internet-monitor.sh` to detect and log internet connectivity changes
+  - Event file limited to 10 entries to prevent abuse and maintain security
+  - Users receive a single summary message with all events that occurred during the outage
+- **System Integration**: Modified `battery-monitor.sh` to use the event manager for shutdown notifications
+- **System Integration**: Modified `notify_startup.sh` to log system startup events via the event manager
+- **Installation**: Updated `install.sh` to deploy new scripts and configure cron for internet monitoring
+
+### Changed
+- None
+
+### Fixed
+- None
+
+### Security
+- **Queue Prevention**: Replaced persistent message queue with a limited event file to avoid potential exploitation
+
+
 ## [2.17.0] - 2026-07-01
 
 ### Added
