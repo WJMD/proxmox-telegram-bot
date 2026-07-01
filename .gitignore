@@ -181,3 +181,6 @@ test_client.py
 test_proxmox_connection.py
 test_sensors.py
 test_token_request.py
+/test
+# Ignorar la carpeta test y todo su contenido
+test/
