@@ -3,6 +3,7 @@ import logging
 from telegram.ext import Application
 from system.checks import check_cpu_temp, check_cpu_usage, check_ram_usage
 from config import TELEGRAM, ALERTS, SETTINGS
+import time
 import json
 import os
 from language.loader import load_translations
@@ -121,6 +122,7 @@ class AlertManager:
 
                 # Change from plugged to unplugged
                 if self.last_power_plugged and not is_plugged:
+                    # Send immediate alert
                     msg = _t.get("alert_power_unplugged", "🔋 Power disconnected! Running on battery: {percent}%").format(percent=round(percent))
                     await self._send_alert(msg)
                     self.battery_60_alerted = False  # Reset flag for the 60% alert
@@ -129,7 +131,7 @@ class AlertManager:
                 elif not self.last_power_plugged and is_plugged:
                     msg = _t.get("alert_power_restored", "🔌 Power restored! Charging: {percent}%").format(percent=round(percent))
                     await self._send_alert(msg)
-
+                    self.last_unplugged_reminder = time.time()
                 # If it's unplugged and the battery is low at 60%, alert (only once)
                 if not is_plugged and percent <= 60 and not self.battery_60_alerted:
                     msg = _t.get("alert_battery_60_warning", "⚠️ Battery at {percent}% - Discharging.\nThe system will shut down when battery reaches 50%.").format(percent=round(percent))
@@ -139,6 +141,15 @@ class AlertManager:
                 # If the battery goes above 60% (for example, if it's plugged in again), reset the flag
                 if is_plugged and percent > 60:
                     self.battery_60_alerted = False
+                    
+                # Periodic reminder if unplugged and the interval has elapsed.
+                if not is_plugged and (time.time() - self.last_unplugged_reminder) >= self.reminder_interval:
+                    msg = _t.get("alert_power_reminder", "🔋 Reminder: Still running on battery ({percent}%). Please connect to power to avoid shutdown.").format(percent=round(percent))
+                    await self._send_alert(msg)
+                    self.last_unplugged_reminder = time.time()
+
+                self.last_unplugged_reminder = 0
+                self.reminder_interval = 300  # every 5 minutes in seconds
 
                 # Update the previous state
                 self.last_power_plugged = is_plugged

@@ -18,6 +18,7 @@
   "alert_power_restored": "🔌 <b>Power restored!</b>\nCharging: {percent}%",
   "alert_battery_60": "⚠️ <b>Battery at 60%</b>\nDischarging,The system will shut down when the battery reaches 50%..",
   "alert_shutdown": "⚠️ <b>System shutting down!</b>\nBattery at {percent}%. Shutting down in 30 seconds...",
+  "alert_power_reminder": "🔋 Reminder: Still running on battery ({percent}%). Please connect to power to avoid shutdown.",
 
   "_SECTION_3": "========== LXC CONTAINERS ==========",
   "lxc_error_metrics": "[LXC {vmid}] Error retrieving node metrics: {e}",

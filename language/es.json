@@ -18,6 +18,7 @@
   "alert_power_restored": "🔌 <b>¡Energía restaurada!</b>\nCargando: {percent}%",
   "alert_battery_60_warning": "⚠️ Batería al {percent}% - Descargando.\nEl sistema se apagará cuando la batería alcance el 50%.",
   "alert_shutdown": "⚠️ <b>¡El sistema se está apagando!</b>\nBatería al {percent}%. Apagando en 30 segundos...",
+  "alert_power_reminder": "🔋 Recordatorio: Aún funcionando con batería ({percent}%). Conecta la corriente para evitar el apagado.",
 
   "_SECCION_3": "========== CONTENEDORES LXC ==========",
   "lxc_error_metrics": "[LXC {vmid}] Error al obtener las métricas del nodo: {e}",
