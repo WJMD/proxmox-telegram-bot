@@ -6,6 +6,7 @@ from config import TELEGRAM, ALERTS, SETTINGS
 import json
 import os
 from language.loader import load_translations
+from system.sensors import get_battery_status
 
 
 # Initialize the global translation dictionary
@@ -120,18 +121,18 @@ class AlertManager:
 
                 # Change from plugged to unplugged
                 if self.last_power_plugged and not is_plugged:
-                    msg = _t.get("alert_power_unplugged").format(percent=percent)
+                    msg = _t.get("alert_power_unplugged", "🔋 Power disconnected! Running on battery: {percent}%").format(percent=round(percent))
                     await self._send_alert(msg)
                     self.battery_60_alerted = False  # Reset flag for the 60% alert
 
                 # Change from unplugged to plugged
                 elif not self.last_power_plugged and is_plugged:
-                    msg = _t.get("alert_power_restored").format(percent=percent)
+                    msg = _t.get("alert_power_restored", "🔌 Power restored! Charging: {percent}%").format(percent=round(percent))
                     await self._send_alert(msg)
 
                 # If it's unplugged and the battery is low at 60%, alert (only once)
                 if not is_plugged and percent <= 60 and not self.battery_60_alerted:
-                    msg = _t.get("alert_battery_60").format(percent=percent)
+                    msg = _t.get("alert_battery_60_warning", "⚠️ Battery at {percent}% - Discharging.\nThe system will shut down when battery reaches 50%.").format(percent=round(percent))
                     await self._send_alert(msg)
                     self.battery_60_alerted = True
 

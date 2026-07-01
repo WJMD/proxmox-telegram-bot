@@ -1,4 +1,5 @@
 {
+  "_SECCION_1": "========== MONITOREO ==========",
   "monitoring_started": "🚨 ¡Sistema de monitoreo iniciado!",
   "monitoring_stopped": "Sistema de monitoreo detenido",
   "error_monitoring": "❌ Error en el monitoreo: {e}",
@@ -7,11 +8,18 @@
   "error_ram_check": "❌ Error al verificar la RAM: {e}",
   "error_send_alert": "❌ Error al enviar la alerta: {e}",
   "alert_sent_log": "📢 Alerta enviada: {text}",
+  "log_temp_ok": "✅ Temperatura normal: {value}°C",
+
+  "_SECCION_2": "========== ALERTAS DE HARDWARE Y ENERGIA ==========",
   "alert_overheat": "🔥 <b>¡SOBRECALENTAMIENTO!</b> Temperatura del CPU: {value}°C (Límite: {threshold}°C)",
   "alert_cpu_high": "⚡ <b>¡ALTA CARGA!</b> CPU: {value}% (Límite: {threshold}%)",
   "alert_ram_high": "💾 <b>¡MUCHA MEMORIA!</b> RAM: {value}% (Límite: {threshold}%)",
-  "log_temp_ok": "✅ Temperatura normal: {value}°C",
+  "alert_power_unplugged": "🔋 <b>¡Energía desconectada!</b>\nFuncionando con batería: {percent}%",
+  "alert_power_restored": "🔌 <b>¡Energía restaurada!</b>\nCargando: {percent}%",
+  "alert_battery_60_warning": "⚠️ Batería al {percent}% - Descargando.\nEl sistema se apagará cuando la batería alcance el 50%.",
+  "alert_shutdown": "⚠️ <b>¡El sistema se está apagando!</b>\nBatería al {percent}%. Apagando en 30 segundos...",
 
+  "_SECCION_3": "========== CONTENEDORES LXC ==========",
   "lxc_error_metrics": "[LXC {vmid}] Error al obtener las métricas del nodo: {e}",
   "lxc_error_list": "Error al obtener la lista de contenedores LXC: {e}",
   "lxc_not_found": "El contenedor LXC con ID {vmid} no se encontró en ningún nodo del clúster.",
@@ -29,7 +37,8 @@
   "lxc_command_timeout": "⏳ Tiempo de espera agotado (30s)",
   "lxc_command_exception": "❌ Error: {e}",
 
-  "vm_error_metrics": "[VM {vmid}] Error al recuperar los registros de la infraestructura de hardware: {e}",
+  "_SECCION_4": "========== MAQUINAS VIRTUALES (VM) ==========",
+  "vm_error_metrics": "[VM {vmid}] Error al recuperar los registros de hardware: {e}",
   "vm_error_list": "Error al obtener el inventario de Máquinas Virtuales: {e}",
   "vm_not_found": "La Máquina Virtual con ID {vmid} no se encontró en ningún nodo del clúster.",
   "vm_started": "Iniciada",
@@ -42,14 +51,14 @@
   "vm_command_executing": "Ejecutando comando en la VM {vmid}: {command}",
   "vm_command_failed": "El comando en la VM {vmid} terminó con el código {code}: {output}",
   "vm_command_success": "✅ Comando ejecutado correctamente",
-  "vm_command_timeout": "⏳ Tiempo de espera agotado esperando la respuesta del agente",
-  "vm_command_agent_unavailable": "❌ Error: QEMU Guest Agent no está instalado o no está ejecutándose",
+  "vm_command_timeout": "⏳ Tiempo de espera agotado esperando al agente",
+  "vm_command_agent_unavailable": "❌ Error: QEMU Guest Agent no está instalado o ejecutándose",
   "vm_command_exception": "❌ Fallo en la ejecución del comando: {e}",
   "vm_no_pid": "❌ No se pudo obtener el PID del guest agent",
 
+  "_SECCION_5": "========== CONEXION Y CLUSTER ==========",
   "cluster_search_error": "Error en la secuencia de búsqueda del clúster: {e}",
-  "cluster_resource_not_found": "El recurso objetivo con ID {vmid} no pudo ser localizado en los metadatos del clúster",
-
+  "cluster_resource_not_found": "El recurso con ID {vmid} no pudo ser localizado en el clúster",
   "proxmox_connecting": "Estableciendo conexión con el host de Proxmox: {host}",
   "proxmox_connected": "Conexión a Proxmox establecida correctamente",
   "proxmox_connect_error": "Error al conectar a Proxmox: {e}",
@@ -57,17 +66,18 @@
   "proxmox_retry_all_failed": "Fallaron los {max} intentos: {e}",
   "proxmox_connection_closed": "Conexión de Proxmox cerrada",
 
+  "_SECCION_6": "========== ESTADO Y MENU ==========",
   "status_title": "📊 Estado del Servidor:",
   "status_uptime": "⏰ Tiempo encendido:",
   "status_cpu": "⚡ Carga de CPU: 1m: {cpu1} ({pct1}%), 5m: {cpu5} ({pct5}%), 15m: {cpu15} ({pct15}%)",
-  "status_ram": "💻 RAM: {used}GB / {total}GB ({pct}%)",
+  "status_ram": "💻 RAM: {used}GB / TOTAL: {total}GB - USO: {pct}%",
   "status_disks": "💽 Discos:",
   "status_disk": "🖥️ {name}: {pct}% ({used}GB / {total}GB)",
   "status_temperatures": "🌡️ Temperaturas:",
-  "status_no_temp": "🌡️ La lectura de temperatura no es compatible con tu sistema operativo.",
+  "status_no_temp": "🌡️ La lectura de temperatura no es compatible con tu SO.",
   "status_vm_not_found": "No se encontraron Máquinas Virtuales.",
   "status_lxc_not_found": "No se encontraron contenedores LXC.",
   "status_error": "❌ Ocurrió un error: {e}",
-  "help_text": "¡Hola! Este es un bot para la gestión de <b>Proxmox VE</b>.\n\n<b>Comandos:</b>\n/status - Estado del servidor\n/vm - Listar Máquinas Virtuales\n/lxc - Listar contenedores LXC\n/console &lt;comando&gt; - Ejecutar un comando en la terminal",
-  "generic_error": "Ocurrió un error inesperado. Por favor, revisa los registros del servidor."
+  "help_text": "¡Hola! Este es un bot para la gestión de <b>Proxmox VE</b>.\n\n<b>Comandos:</b>\n/status - Estado del servidor\n/vm - Listar Máquinas Virtuales\n/lxc - Listar contenedores LXC\n/console &lt;comando&gt; - Ejecutar un comando",
+  "generic_error": "Ocurrió un error inesperado. Por favor, revisa los registros."
 }
