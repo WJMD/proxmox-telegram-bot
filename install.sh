@@ -8,7 +8,7 @@ NC='\033[0m' # No color
 
 echo -e "${GREEN}=== Proxmox Telegram Bot - Installer ===${NC}"
 
-# 1. Verificar que se ejecuta como root
+# 1. Verify that it is running as root.
 if [ "$EUID" -ne 0 ]; then
     echo -e "${RED}Please run as root (sudo).${NC}"
     exit 1
@@ -20,7 +20,7 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# ===== INSTALAR DEPENDENCIAS DEL SISTEMA =====
+# ===== INSTALL SYSTEM DEPENDENCIES =====
 echo -e "${YELLOW}Installing system dependencies...${NC}"
 apt-get update -qq
 apt-get install -y upower curl
@@ -61,38 +61,49 @@ EOF
     echo -e "${YELLOW}⚠️  Edit the .env file with your credentials before starting the bot.${NC}"
 fi
 
-# ===== INSTALAR SCRIPTS DE SISTEMA =====
+# ===== INSTALL SYSTEM SCRIPTS =====
 echo -e "${YELLOW}Installing system scripts...${NC}"
 
-# Copiar scripts al directorio /usr/local/bin
+# Copy scripts to the /usr/local/bin directory
 cp system/battery-monitor.sh /usr/local/bin/
 cp system/notify_startup.sh /usr/local/bin/
 
-# Hacer ejecutables
+# Make them executable
 chmod +x /usr/local/bin/battery-monitor.sh
 chmod +x /usr/local/bin/notify_startup.sh
 
-# ===== CONFIGURAR SERVICIOS SYSTEMD =====
+# ===== Configure systemd services =====
 echo -e "${YELLOW}Configuring systemd services...${NC}"
 
-# Servicio de notificación de inicio
+# Startup notification service
 cp system/notify-startup.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable notify-startup.service
 
-# Servicio de monitoreo de batería (alternativa a cron)
+# Battery monitoring service (alternative to cron)
 # cp system/battery-monitor.service /etc/systemd/system/
 # systemctl enable battery-monitor.service
 
-# ===== CONFIGURAR CRON PARA EL MONITOR DE BATERÍA =====
+# ===== Configure Cron for the battery monitor =====
 echo -e "${YELLOW}Configuring cron job for battery monitoring...${NC}"
 (crontab -l 2>/dev/null; echo "* * * * * /usr/local/bin/battery-monitor.sh") | crontab -
 
-# ===== COPIAR EL SERVICIO DEL BOT =====
+# ===== COPY THE BOT SERVICE =====
 echo -e "${YELLOW}Installing bot systemd service...${NC}"
 cp system/proxmox-telegram-bot.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable proxmox-telegram-bot.service
+
+# ===== INSTALL INTERNET MONITORING SCRIPTS =====
+echo -e "${YELLOW}Installing internet monitoring scripts...${NC}"
+cp system/internet-monitor.sh /usr/local/bin/
+cp system/system-event-manager.sh /usr/local/bin/
+chmod +x /usr/local/bin/internet-monitor.sh
+chmod +x /usr/local/bin/system-event-manager.sh
+
+# ===== Configure Cron for Internet Monitor =====
+echo -e "${YELLOW}Configuring cron job for internet monitoring...${NC}"
+(crontab -l 2>/dev/null; echo "* * * * * /usr/local/bin/internet-monitor.sh") | crontab -
 
 # 7. Final message
 echo -e "${GREEN}✅ Installation completed.${NC}"

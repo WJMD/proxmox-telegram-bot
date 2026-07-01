@@ -26,17 +26,11 @@ STATE=$(upower -i "$BATTERY_PATH" | grep state | awk '{print $2}')
 
 # If it's discharging and the percentage is below the threshold, initiate shutdown
 if [ "$STATE" == "discharging" ] && [ "$PERCENTAGE" -le "$THRESHOLD" ]; then
-    # ===== SEND SHUTDOWN NOTIFICATION =====
-    MESSAGE="⚠️ <b>System shutting down!</b>\nBattery at ${PERCENTAGE}%. Shutting down in 30 seconds..."
-    curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-         -d chat_id="$CHAT_ID" \
-         -d text="$MESSAGE" \
-         -d parse_mode="HTML" > /dev/null 2>&1
+    /usr/local/bin/system-event-manager.sh add "⚠️ System shutting down! Battery at ${PERCENTAGE}%."
+    sleep 60
 
-    # Wait 30 seconds for the message to be delivered
-    sleep 30
-
-    # Check out and shut down
+   # Check out and shut down
     logger "Battery at ${PERCENTAGE}%. Initiating system shutdown..."
     /sbin/shutdown -h now
 fi
+ 
