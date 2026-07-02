@@ -1,17 +1,19 @@
 import asyncio
 import logging
-from telegram.ext import Application
-from system.checks import check_cpu_temp, check_cpu_usage, check_ram_usage
-from config import TELEGRAM, ALERTS, SETTINGS
 import time
 import json
 import os
-from language.loader import load_translations
+import subprocess
+from datetime import datetime
+
+from telegram.ext import Application
+
+from system.checks import check_cpu_temp, check_cpu_usage, check_ram_usage
 from system.sensors import get_battery_status
+from language.loader import load_translations
+from config import TELEGRAM, ALERTS, SETTINGS
 
-
-# Initialize the global translation dictionary
-# --- Carga de traducciones ---
+# ===== Translation loading =====
 CURRENT_LANGUAGE = getattr(SETTINGS, "language", "en")
 
 def load_translations(lang):
@@ -29,9 +31,7 @@ def load_translations(lang):
             logger.warning("⚠️ No language dictionary files found in 'language/' directory.")
             return {}
 
-
 _t = load_translations(CURRENT_LANGUAGE)
-
 logger = logging.getLogger(__name__)
 
 
@@ -40,10 +40,13 @@ class AlertManager:
         self.app = application
         self.running = False
         self.task = None
-         # Variables to store the previous battery state
+
+        # Battery state tracking variables
         self.last_power_plugged = None
         self.last_battery_percent = None
-        self.battery_60_alerted = False  # to prevent spam
+        self.battery_60_alerted = False          # Prevents spam of the 60% alert
+        self.last_unplugged_reminder = 0         # Timestamp of the last reminder sent
+        self.reminder_interval = 300             # 5 minutes in seconds
 
     async def start(self):
         self.running = True
@@ -62,7 +65,6 @@ class AlertManager:
 
     async def _monitor_loop(self):
         error_sleep = 60
-
         while self.running:
             try:
                 await self._check_alerts()
@@ -77,6 +79,40 @@ class AlertManager:
         """Runs a synchronous hardware check inside a thread executor to avoid blocking the bot."""
         return await asyncio.to_thread(check_func)
 
+    # ===== Helper: Save event to system event log =====
+    def add_system_event(self, message: str):
+        """Saves a message to the system event log file using system-event-manager.sh."""
+        try:
+            clean_message = message.replace('\n', ' ').replace('"', '\\"')
+            subprocess.run(
+                ["/usr/local/bin/system-event-manager.sh", "add", clean_message],
+                check=False,
+                timeout=5,
+                capture_output=True
+            )
+        except Exception as e:
+            logger.warning(f"Failed to add system event: {e}")
+
+    # ===== Helper: Send alert (with fallback to event log on network failure) =====
+    async def _send_alert(self, text: str):
+        try:
+            for chat_id in TELEGRAM.whitelist:
+                await self.app.bot.send_message(
+                    chat_id=chat_id, text=text, parse_mode="HTML"
+                )
+            logger.info(_t.get("alert_sent_log").format(text=text))
+        except Exception as e:
+            error_str = str(e).lower()
+            # If it's a network error, save to the event file
+            if any(keyword in error_str for keyword in ("network", "connect", "dns", "timeout")):
+                logger.warning(f"Network error saving alert to event file: {e}")
+                clean_text = text.replace('<b>', '').replace('</b>', '') \
+                                 .replace('<i>', '').replace('</i>', '')
+                self.add_system_event(clean_text)
+            else:
+                logger.error(_t.get("error_send_alert").format(e=e))
+
+    # ===== Main alert checking loop =====
     async def _check_alerts(self):
         # 1. CPU Temperature Check
         try:
@@ -106,75 +142,53 @@ class AlertManager:
                 await self._send_alert(msg)
         except Exception as e:
             logger.error(_t.get("error_ram_check").format(e=e))
-            
-        # ---- News alerts of Battery ----
+
+        # ---- Battery status monitoring ----
         try:
             battery = await asyncio.to_thread(get_battery_status)
-            if battery["has_battery"]:
-                percent = battery["percent"]
-                is_plugged = battery["is_charging"] or battery["status"] == "full"
+            if not battery["has_battery"]:
+                return
 
-                # Initial status: save the initial state without sending an alert.
-                if self.last_power_plugged is None:
-                    self.last_power_plugged = is_plugged
-                    self.last_battery_percent = percent
-                    return
+            percent = battery["percent"]
+            is_plugged = battery["is_charging"] or battery["status"] == "full"
 
-                # Change from plugged to unplugged
-                if self.last_power_plugged and not is_plugged:
-                    # Send immediate alert
-                    msg = _t.get("alert_power_unplugged", "🔋 Power disconnected! Running on battery: {percent}%").format(percent=round(percent))
-                    await self._send_alert(msg)
-                    self.battery_60_alerted = False  # Reset flag for the 60% alert
-
-                # Change from unplugged to plugged
-                elif not self.last_power_plugged and is_plugged:
-                    msg = _t.get("alert_power_restored", "🔌 Power restored! Charging: {percent}%").format(percent=round(percent))
-                    await self._send_alert(msg)
-                    self.last_unplugged_reminder = time.time()
-                # If it's unplugged and the battery is low at 60%, alert (only once)
-                if not is_plugged and percent <= 60 and not self.battery_60_alerted:
-                    msg = _t.get("alert_battery_60_warning", "⚠️ Battery at {percent}% - Discharging.\nThe system will shut down when battery reaches 50%.").format(percent=round(percent))
-                    await self._send_alert(msg)
-                    self.battery_60_alerted = True
-
-                # If the battery goes above 60% (for example, if it's plugged in again), reset the flag
-                if is_plugged and percent > 60:
-                    self.battery_60_alerted = False
-                    
-                # Periodic reminder if unplugged and the interval has elapsed.
-                if not is_plugged and (time.time() - self.last_unplugged_reminder) >= self.reminder_interval:
-                    msg = _t.get("alert_power_reminder", "🔋 Reminder: Still running on battery ({percent}%). Please connect to power to avoid shutdown.").format(percent=round(percent))
-                    await self._send_alert(msg)
-                    self.last_unplugged_reminder = time.time()
-
-                self.last_unplugged_reminder = 0
-                self.reminder_interval = 300  # every 5 minutes in seconds
-
-                # Update the previous state
+            # Initialize previous state on first run
+            if self.last_power_plugged is None:
                 self.last_power_plugged = is_plugged
                 self.last_battery_percent = percent
+                return
+
+            # --- Detect power state change (plugged ↔ unplugged) ---
+            if self.last_power_plugged and not is_plugged:
+                msg = _t.get("alert_power_unplugged", "🔋 Power disconnected! Running on battery: {percent}%").format(percent=round(percent))
+                await self._send_alert(msg)
+                self.battery_60_alerted = False
+                self.last_unplugged_reminder = time.time()   # Reset reminder timer
+
+            elif not self.last_power_plugged and is_plugged:
+                msg = _t.get("alert_power_restored", "🔌 Power restored! Charging: {percent}%").format(percent=round(percent))
+                await self._send_alert(msg)
+                self.battery_60_alerted = False
+                self.last_unplugged_reminder = 0
+
+            # --- 60% battery warning (only if unplugged) ---
+            if not is_plugged and percent <= 60 and not self.battery_60_alerted:
+                msg = _t.get("alert_battery_60_warning", "⚠️ Battery at {percent}% - Discharging.\nThe system will shut down when battery reaches 50%.").format(percent=round(percent))
+                await self._send_alert(msg)
+                self.battery_60_alerted = True
+                self.last_unplugged_reminder = time.time()   # Reset reminder timer after warning
+
+            # --- Periodic reminder every 5 minutes (only if unplugged) ---
+            if not is_plugged and self.last_unplugged_reminder > 0:
+                elapsed = time.time() - self.last_unplugged_reminder
+                if elapsed >= self.reminder_interval:
+                    msg = _t.get("alert_power_reminder", "🔋 Reminder: Still running on battery ({percent}%). Please connect to power to avoid shutdown.").format(percent=round(percent))
+                    await self._send_alert(msg)
+                    self.last_unplugged_reminder = time.time()  # Update timestamp
+
+            # --- Update previous state ---
+            self.last_power_plugged = is_plugged
+            self.last_battery_percent = percent
 
         except Exception as e:
             logger.error(f"❌ Error checking battery status: {e}")
-
-    async def _send_alert(self, text: str):
-        try:
-            for chat_id in TELEGRAM.whitelist:
-                await self.app.bot.send_message(
-                    chat_id=chat_id, text=text, parse_mode="HTML"
-                )
-            logger.info(_t.get("alert_sent_log").format(text=text))
-        except Exception as e:
-            logger.error(_t.get("error_send_alert").format(e=e))
-
-
-    async def _send_alert(self, text: str):
-        try:
-            for chat_id in TELEGRAM.whitelist:
-                await self.app.bot.send_message(
-                    chat_id=chat_id, text=text, parse_mode="HTML"
-                )
-            logger.info(_t.get("alert_sent_log").format(text=text))
-        except Exception as e:
-            logger.error(_t.get("error_send_alert").format(e=e))

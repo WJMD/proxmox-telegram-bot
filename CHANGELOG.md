@@ -5,9 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.19.0] - 2026-07-01
+
+### Added
+- **Alerts**: All alerts are now automatically saved to the system event file if they fail to send due to network issues.
+  - Any alert (battery, CPU, RAM, temperature) will be stored in `/var/tmp/system_events.log` when Internet is down.
+  - When Internet is restored, the event summary will include all missed alerts.
+  - No need to modify individual alert handlers; the system is now fully generic.
+
+### Changed
+- **Internals**: `_send_alert` method now handles network errors and saves alerts to the event system.
+
+---
+
 ## [2.18.1] - 2026-07-01
 
-###🧹 Refactoring & Chores
+### Refactoring & Chores
 - **Git**: Added `test/` directory to `.gitignore` to prevent test suites from being tracked by @WJMD
 
 ---
